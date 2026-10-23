@@ -51,4 +51,5 @@ echo.
 node src/server.js
 
 :end
+if not "%1"=="" exit /b 0
 pause
