@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Error-DVR · Replay</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/replay.css">
+  <link rel="stylesheet" href="/vendor/rrweb-player.css">
+</head>
+<body>
+
+  <header class="trace-bar">
+    <a class="icon-btn" href="/" aria-label="Back to dashboard" title="Back to dashboard">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M15 6l-6 6 6 6"></path>
+      </svg>
+    </a>
+
+    <div class="trace-head">
+      <div class="trace-line">
+        <span class="sev" id="sev" aria-hidden="true"></span>
+        <h1 id="traceTitle">Loading trace…</h1>
+        <span class="chip sev-chip" id="sevChip" hidden>Critical</span>
+      </div>
+      <p class="trace-sub">
+        <code id="sliceId">—</code>
+        <span class="dotsep" aria-hidden="true"></span>
+        <span id="status">Loading slice…</span>
+      </p>
+    </div>
+
+    <button class="btn sm" type="button" id="shareBtn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"></path><path d="M12 3v12"></path><path d="m7 8 5-5 5 5"></path>
+      </svg>
+      Share
+    </button>
+  </header>
+
+  <p class="banner" id="warning" role="alert" hidden>
+    Integrity check failed — this stored recording was modified after capture.
+  </p>
+
+  <main class="replay-grid">
+
+    <section class="stage-card" aria-label="Session replay">
+      <div class="stage-head">
+        <h2>Session replay</h2>
+        <span class="chip-soft" id="stageMeta">isolated origin</span>
+      </div>
+
+      <div class="stage-body">
+        <!-- Served from the other loopback hostname: a real cross-origin document.
+             allow-same-origin is required so rrweb can reach its own nested replay
+             frame; isolation comes from the origin boundary, not from opacity. -->
+        <iframe id="playerFrame" sandbox="allow-scripts allow-same-origin" title="Sandboxed session replay" referrerpolicy="no-referrer"></iframe>
+        <div class="stage-cover" id="cover">
+          <div class="cover-inner">
+            <span class="spinner" aria-hidden="true"></span>
+            <span id="coverText">Preparing replay…</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="player-bar">
+        <button class="play-btn" type="button" id="playBtn" aria-label="Play replay" disabled>
+          <svg class="i-play" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M8 5.5v13l11-6.5z"></path>
+          </svg>
+          <svg class="i-pause" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" hidden>
+            <rect x="7" y="5" width="3.5" height="14" rx="1.2"></rect>
+            <rect x="13.5" y="5" width="3.5" height="14" rx="1.2"></rect>
+          </svg>
+        </button>
+
+        <span class="timecode" id="timecode">00:00 / 00:00</span>
+
+        <div class="timeline" id="timeline" role="slider" tabindex="0"
+             aria-label="Replay position" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+          <div class="tl-track">
+            <div class="tl-fill" id="tlFill"></div>
+            <div class="tl-pin" id="tlPin" hidden>
+              <span class="tl-pin-label">error</span>
+            </div>
+            <div class="tl-head" id="tlHead"></div>
+          </div>
+        </div>
+
+        <span class="speed-tag" aria-hidden="true">1×</span>
+      </div>
+    </section>
+
+    <aside class="inspect" aria-label="Trace details">
+
+      <section class="ins-card">
+        <h2>Error summary</h2>
+        <p class="err-line" id="errLine">—</p>
+        <p class="err-meta" id="errMeta"></p>
+        <div class="explain" id="explain"></div>
+      </section>
+
+      <section class="ins-card ins-tabs">
+        <div class="tabbar" role="tablist" aria-label="Event streams">
+          <button class="tab" type="button" role="tab" data-tab="network" aria-selected="true" id="tab-network" aria-controls="networkLog">
+            Network <span class="tab-n" id="netCount">0</span>
+          </button>
+          <button class="tab" type="button" role="tab" data-tab="console" aria-selected="false" id="tab-console" aria-controls="consoleLog">
+            Console <span class="tab-n" id="conCount">0</span>
+          </button>
+          <button class="tab" type="button" role="tab" data-tab="events" aria-selected="false" id="tab-events" aria-controls="eventsLog">
+            Events <span class="tab-n" id="evCount">0</span>
+          </button>
+        </div>
+
+        <label class="field filter-field">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.2-3.2"></path>
+          </svg>
+          <input id="filter" type="search" placeholder="Filter this tab…" aria-label="Filter this tab" autocomplete="off">
+        </label>
+
+        <div class="tab-body" id="networkLog" role="tabpanel" aria-labelledby="tab-network"></div>
+        <div class="tab-body" id="consoleLog" role="tabpanel" aria-labelledby="tab-console" hidden></div>
+        <div class="tab-body" id="eventsLog" role="tabpanel" aria-labelledby="tab-events" hidden></div>
+      </section>
+
+    </aside>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="/replay.js"></script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Error-DVR · Session traces</title>
+  <meta name="description" content="Local-only error DVR: replay the moments before a crash.">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+  <!-- Shown until an admin token is supplied. -->
+  <section id="lock" class="lock-wrap" hidden>
+    <div class="lock">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <h1>Unlock Error-DVR</h1>
+      <p>This dashboard reads recorded sessions, so it needs the admin token printed by the server at startup.</p>
+      <form id="lockForm" autocomplete="off">
+        <label class="field">
+          <span class="sr-only">Admin token</span>
+          <input id="tokenInput" type="password" placeholder="Paste admin token" spellcheck="false" required>
+        </label>
+        <button class="btn primary wide" type="submit" id="unlockBtn">Unlock dashboard</button>
+        <p class="lock-error" id="lockError" hidden></p>
+      </form>
+      <p class="fine">The token stays in this tab’s session storage and is sent only as an authorisation header — never in a URL, a cookie, or on disk.</p>
+    </div>
+  </section>
+
+  <!-- Application shell. -->
+  <div id="app" class="app" hidden>
+
+    <nav class="rail" aria-label="Primary">
+      <a class="rail-mark" href="/" aria-label="Error-DVR home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      </a>
+
+      <button class="rail-btn" type="button" data-view="dashboard" aria-current="page" aria-label="Dashboard" title="Dashboard">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+          <rect x="3" y="3" width="7.5" height="7.5" rx="2.2"></rect><rect x="13.5" y="3" width="7.5" height="7.5" rx="2.2"></rect>
+          <rect x="3" y="13.5" width="7.5" height="7.5" rx="2.2"></rect><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2.2"></rect>
+        </svg>
+      </button>
+
+      <button class="rail-btn" type="button" data-view="recordings" aria-label="Recordings" title="Recordings">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+          <path d="M4 6.5h16M4 12h16M4 17.5h10"></path>
+        </svg>
+        <span class="rail-badge" id="navBadge" hidden>0</span>
+      </button>
+
+      <button class="rail-btn" type="button" data-view="issues" aria-label="Issues" title="Issues">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+          <path d="M10.3 4.3 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z"></path>
+          <path d="M12 9.5v3.5"></path><path d="M12 16.5h.01"></path>
+        </svg>
+      </button>
+
+      <div class="rail-gap"></div>
+
+      <a class="rail-btn" href="/demo" aria-label="Open the demo page" title="Capture a trace">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+          <path d="M12 5v14M5 12h14"></path>
+        </svg>
+      </a>
+
+      <button class="rail-btn" type="button" data-view="settings" aria-label="Settings" title="Settings">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"></path>
+        </svg>
+      </button>
+
+      <button class="rail-avatar" type="button" id="account" aria-label="Account and settings">DV</button>
+    </nav>
+
+    <div class="workspace">
+
+      <header class="appbar">
+        <div class="appbar-text">
+          <h1 id="greetingTitle">Dashboard</h1>
+          <p id="attentionLine" class="sub">Loading traces…</p>
+        </div>
+        <div class="appbar-actions">
+          <label class="field search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.2-3.2"></path>
+            </svg>
+            <input id="search" type="search" placeholder="Search recordings…" aria-label="Search recordings" autocomplete="off">
+          </label>
+          <button class="icon-btn" id="refresh" type="button" aria-label="Refresh traces" title="Refresh traces">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <main class="content">
+
+        <!-- ---------------------------------------------------- dashboard -->
+        <section id="view-dashboard" class="view" aria-labelledby="greetingTitle">
+          <div class="board-grid">
+
+            <article class="board">
+              <div class="board-head">
+                <div>
+                  <p class="eyebrow">Session intelligence</p>
+                  <h2>Recorded traces</h2>
+                </div>
+                <span class="chip-soft">Last 24 hours</span>
+              </div>
+
+              <div class="hero">
+                <div class="hero-num">
+                  <span class="hero-value" id="kpiCritical">—</span>
+                  <span class="hero-label">critical errors</span>
+                </div>
+                <div class="hero-pills">
+                  <span class="soft-stat"><b id="kpiSessions">—</b> sessions</span>
+                  <span class="soft-stat"><b id="kpiReplay">—</b> sec captured</span>
+                </div>
+              </div>
+
+              <div class="chart" id="chart" role="img" aria-label="Traces recorded per hour over the last 24 hours"></div>
+              <div class="chart-axis" id="chartAxis" aria-hidden="true"></div>
+
+              <div class="board-foot">
+                <a class="btn primary" href="/demo">Capture a trace</a>
+                <button class="btn" type="button" data-go="recordings">All recordings</button>
+              </div>
+            </article>
+
+            <aside class="side" aria-label="At a glance">
+              <article class="side-card">
+                <header class="side-head">
+                  <h3>Needs attention</h3>
+                  <span class="count" id="attentionCount">0</span>
+                </header>
+                <div class="side-list" id="attention"></div>
+              </article>
+
+              <article class="side-card">
+                <header class="side-head"><h3>Coverage</h3></header>
+                <dl class="coverage" id="coverage"></dl>
+              </article>
+            </aside>
+
+          </div>
+
+          <div class="section-head">
+            <h2>Recent recordings</h2>
+            <span class="count" id="recentCount">0</span>
+            <span class="spacer"></span>
+            <button class="btn quiet sm" type="button" data-go="recordings">View all</button>
+          </div>
+          <div class="traces" id="recent"></div>
+        </section>
+
+        <!-- --------------------------------------------------- recordings -->
+        <section id="view-recordings" class="view" aria-labelledby="recordingsTitle" hidden>
+          <article class="board board-flat">
+            <div class="board-head">
+              <div>
+                <p class="eyebrow">Archive</p>
+                <h2 id="recordingsTitle">Recordings</h2>
+              </div>
+              <span class="chip-soft" id="recordingsCount">0 traces</span>
+            </div>
+            <div class="pillbar" id="filters" role="group" aria-label="Filter by severity"></div>
+            <div class="traces" id="recordings"></div>
+          </article>
+        </section>
+
+        <!-- -------------------------------------------------------- issues -->
+        <section id="view-issues" class="view" aria-labelledby="issuesTitle" hidden>
+          <article class="board board-flat">
+            <div class="board-head">
+              <div>
+                <p class="eyebrow">Triage</p>
+                <h2 id="issuesTitle">Issues</h2>
+              </div>
+            </div>
+            <div class="issues" id="issues"></div>
+          </article>
+        </section>
+
+        <!-- ------------------------------------------------------ settings -->
+        <section id="view-settings" class="view" aria-labelledby="settingsTitle" hidden>
+          <article class="board board-flat">
+            <div class="board-head">
+              <div>
+                <p class="eyebrow">Configuration</p>
+                <h2 id="settingsTitle">Settings</h2>
+              </div>
+              <span class="pill-ok">Local only</span>
+            </div>
+
+            <div class="settings-grid">
+              <div class="setting">
+                <h3>Admin access</h3>
+                <p>Trace reads require the admin token. It lives in this tab only and is discarded when the tab closes.</p>
+                <div class="row">
+                  <span class="pill-ok"><span class="live-dot" aria-hidden="true"></span> Unlocked</span>
+                  <button class="btn sm" type="button" id="lockNow">Lock this tab</button>
+                </div>
+              </div>
+
+              <div class="setting">
+                <h3>Recorder</h3>
+                <p>The instrumented page carries a separate, write-only ingest key. It can create traces but can never read them.</p>
+                <div class="row">
+                  <a class="btn sm" href="/demo">Open demo page</a>
+                  <span class="muted-small">15s rolling window · masking on</span>
+                </div>
+              </div>
+
+              <div class="setting">
+                <h3>Privacy</h3>
+                <p>Inputs are masked before serialisation. Emails, card numbers and long tokens are redacted from console output and URLs. Replays run in a sandboxed opaque-origin frame that cannot read this dashboard.</p>
+                <div class="row">
+                  <span class="pill-ok">Masking on</span>
+                  <span class="pill-ok">Sandboxed replay</span>
+                </div>
+              </div>
+
+              <div class="setting">
+                <h3>Storage</h3>
+                <p>Traces live in a local SQLite file with a SHA-256 hash per slice. The oldest are pruned at the retention limit.</p>
+                <div class="row">
+                  <span class="muted-small mono" id="storageLine">—</span>
+                </div>
+              </div>
+            </div>
+          </article>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <div class="scrim" id="scrim" hidden></div>
+
+  <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" hidden>
+    <div class="drawer-head">
+      <span class="sev critical" id="drawerSev" aria-hidden="true"></span>
+      <h2 id="drawerTitle">Trace</h2>
+      <button class="icon-btn" type="button" id="drawerClose" aria-label="Close details">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+    <div class="drawer-scroll" id="drawerBody"></div>
+    <div class="drawer-actions">
+      <button class="btn primary" type="button" id="drawerOpen">Open replay</button>
+      <button class="btn" type="button" id="drawerCopy">Copy link</button>
+    </div>
+  </aside>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

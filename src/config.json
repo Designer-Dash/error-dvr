@@ -1,0 +1,19 @@
+{
+  "host": "127.0.0.1",
+  "port": 3000,
+  "allowedHosts": ["127.0.0.1", "localhost", "[::1]"],
+  "databasePath": "./data/slices.db",
+  "secretsPath": "./data/.secrets.json",
+
+  "privacyMasking": true,
+  "sliceLengthSec": 15,
+  "maxEventsPerSlice": 5000,
+
+  "maxUploadBytes": 1048576,
+  "maxStringLength": 100000,
+  "maxSlices": 2000,
+  "maxListLimit": 100,
+
+  "uploadRateLimitPerMin": 30,
+  "readRateLimitPerMin": 240
+}

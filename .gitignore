@@ -1,0 +1,27 @@
+# Recordings contain sensitive user data — never commit them.
+data/
+*.db
+*.db-wal
+*.db-shm
+.secrets.json
+
+# Dependencies
+node_modules/
+
+# Local env
+.env
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Editor
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Backup directories (not for distribution)
+_original_backup/
+claude-upload/
+shots/

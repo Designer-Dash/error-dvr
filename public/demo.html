@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Error-DVR · Controlled crash</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/demo.css">
+</head>
+<body class="demo">
+
+  <header class="demo-top">
+    <a class="brand" href="/" aria-label="Back to dashboard">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span>Error<em>DVR</em></span>
+    </a>
+    <a class="btn sm" href="/">Dashboard</a>
+  </header>
+
+  <main class="demo-main">
+    <p class="eyebrow">Recorder test</p>
+    <h1>Catch a crash<br>on purpose.</h1>
+    <p class="lede">
+      This page loads the recording SDK. Pressing the button throws a real
+      <code>TypeError</code>; the SDK keeps the last 15 seconds in memory and uploads
+      the slice the moment the error fires.
+    </p>
+
+    <section class="demo-card" aria-label="Recorder">
+      <div class="demo-status">
+        <span class="live-dot" id="recDot" aria-hidden="true"></span>
+        <strong id="recLabel">Arming recorder…</strong>
+        <span class="pill-ok" id="maskPill" hidden>Masking on</span>
+      </div>
+
+      <div class="demo-stats">
+        <div class="demo-stat">
+          <span class="label">Buffered</span>
+          <span class="value mono" id="bufferCount">0</span>
+          <span class="unit">events</span>
+        </div>
+        <div class="demo-stat">
+          <span class="label">Window</span>
+          <span class="value mono">15</span>
+          <span class="unit">sec</span>
+        </div>
+        <div class="demo-stat">
+          <span class="label">Uploads</span>
+          <span class="value mono" id="uploadCount">0</span>
+          <span class="unit">slices</span>
+        </div>
+      </div>
+
+      <button class="btn primary wide crash" type="button" id="crashBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12z"></path>
+        </svg>
+        <span>Run controlled crash</span>
+      </button>
+
+      <p class="demo-hint" id="demoHint">The recorder buffers silently until something breaks.</p>
+    </section>
+
+    <div id="out" aria-live="polite"></div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="/vendor/rrweb.js"></script>
+  <script src="/config.js"></script>
+  <script src="/sdk.js"></script>
+  <script src="/demo.js"></script>
+</body>
+</html>

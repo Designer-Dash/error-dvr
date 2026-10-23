@@ -1,0 +1,22 @@
+{
+  "name": "error-dvr",
+  "version": "2.0.0",
+  "description": "Hardened local-only error DVR: records a short DOM/network/console slice on error",
+  "private": true,
+  "main": "src/server.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "test": "node test/security.test.mjs",
+    "test:e2e": "node test/e2e-replay.test.mjs"
+  },
+  "author": "Hackathon Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
