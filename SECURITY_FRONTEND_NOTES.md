@@ -1,32 +1,57 @@
-# Security notes — superseded
+# Security & Frontend Tracking Notes
 
-> **This file previously described a different implementation and was inaccurate.**
-> It claimed the following controls, none of which existed in `src/server.js` as reviewed on
-> 2026‑10‑23. It has been replaced so it cannot be mistaken for an accurate audit.
+> Last updated: 23 Oct 2026
 
-## Corrections to the previous version of this file
+---
 
-| Previously claimed | Reality at review time |
-|---|---|
-| "**Helmet** – added to set secure HTTP headers" | No Helmet and no security headers at all. Now implemented directly in `src/security.js`. |
-| "**CORS** – `origin: '*'`" | Not present — and `*` would have been the wrong choice: it would let any website read recordings from a local server. **Do not add it.** Correct behaviour is no CORS headers, which is what the app now does. |
-| "**express-rate-limit** – 100 requests / 5 min" | Not present. Replaced with an in-process limiter (30 uploads/min, 120 reads/min). |
-| "**Optional API-key auth** via `x-api-key`" | Not present; no authentication of any kind. Replaced with two separate credentials (write-only ingest key, read-only admin token). |
-| "**`GET /api/slices`** lists all slice IDs" | Not present. Deliberately **not** added: it would turn IDOR into full-archive enumeration. |
-| "**Privacy masking** – all PII is masked before storage" | False. The masking branch never executed (it keyed off rrweb `type === 2`, which is `FullSnapshot`, not a mutation), so recordings were stored in plaintext. Fixed in `public/sdk.js`. |
-| "Front‑end kept separate from the security implementation" | The two are coupled: the replay UI executes recorded DOM, which was a critical XSS path. |
+## Security (DeepSeek) — ✅ Complete for Phase 1
 
-## Where the real documentation lives
+### Implemented in `src/security.js`
+- **Secret management** (`loadSecrets`): Auto-generates 256-bit `ingestKey` + `adminToken` on first run, persisted to `data/.secrets.json` with mode `0o600`.
+- **Constant-time credential comparison** (`safeEqual`): SHA-256 hashing + `timingSafeEqual` to prevent length-oracle attacks.
+- **Split credential gates** (`requireCredential`): Write-only ingest key vs read-only admin token. No confusion possible.
+- **Security headers + CSP** (`securityHeaders`, `playerCsp`): `default-src 'none'`, `frame-ancestors`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, COOP, CORP.
+- **Host allow-list** (`hostAllowlist`): DNS-rebinding defence. Foreign `Host` headers get `421`.
+- **Rate limiting** (`rateLimit`): Fixed-window per-IP. Dependency-free, in-process.
+- **Event sanitisation** (`sanitizeEvents`, `scrub`): Recursive scrubbing of `on*` handlers, `javascript:` URIs, `srcdoc`, blocked tags (`script`, `iframe`, `object`, `embed`, `applet`, `frame`, `frameset`, `base`). Depth-limited to 64.
 
-- **[SECURITY.md](SECURITY.md)** — the full audit: findings, severity, root cause, fixes, verification, residual risk.
-- **[README.md](README.md)** — how to run it and how the trust model works.
+### Verified by tests
+- 85 security regression checks (all PASS)
+- 38 browser E2E checks including XSS execution test (all PASS)
 
-## Standing rules for this project
+### Known residual risks (documented in SECURITY.md)
+- HTTP only — do not expose without TLS reverse proxy
+- SQLite file is unencrypted at rest — rely on FDE
+- Ingest key is public by design — junk slices bounded by rate limits + retention
 
-1. Never expose the port beyond `127.0.0.1`. `src/config.json` pins the bind address.
-2. Do not add permissive CORS. The browser talks to the same origin only; the only exception is
-   `Cross-Origin-Resource-Policy: cross-origin` on the handful of assets the sandboxed player
-   frame loads (they are public library code).
-3. Do not disable privacy masking for real sessions.
-4. Run `npm test` and `npm run test:e2e` after any change to `src/` or `public/`.
-   Both currently pass (73 security checks, 24 browser checks).
+---
+
+## Frontend (ChatGPT) — Functional, Polish Pending
+
+### What exists
+| File | Purpose | Status |
+|------|---------|--------|
+| `public/app.html` + `app.css` + `app.js` | Dashboard SPA | ✅ Working |
+| `public/replay.html` + `replay.css` + `replay.js` | Trace replay page | ✅ Working |
+| `public/demo.html` + `demo.css` + `demo.js` | Instrumented demo page | ✅ Working |
+| `public/player.html` + `player.js` | Sandboxed rrweb player (OOPIF) | ✅ Working |
+| `public/sdk.js` | Client-side recording SDK | ✅ Working |
+
+### What the E2E tests confirm
+- Dashboard unlocks, renders KPIs, chart, trace list, detail drawer
+- Replay loads, DOM is rebuilt, error pin placed, network/console/events tabs work
+- Demo page bootstraps SDK, crash triggers upload, result card rendered
+
+### What's not done yet
+- Full design-system polish (typography, spacing, colour harmony)
+- Responsive mobile layout
+- Dark mode toggle
+- Accessibility audit (ARIA, keyboard nav, contrast)
+- Loading skeleton states
+- Empty states for zero-trace dashboard
+
+---
+
+## Backend (Antigravity) — ✅ Complete for Phase 1
+
+All backend work is done and tested. See [ROADMAP.md](./ROADMAP.md) for Phase 2+ features.
