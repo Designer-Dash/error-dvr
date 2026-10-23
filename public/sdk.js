@@ -26,6 +26,12 @@
   var WINDOW_MS = (cfg.sliceLengthSec || 15) * 1000;
   var UPLOAD_COOLDOWN_MS = 10000;
 
+  window.addEventListener('dvr:set-window', function (e) {
+    if (e && e.detail && typeof e.detail.seconds === 'number') {
+      WINDOW_MS = Math.max(3000, Math.min(60000, e.detail.seconds * 1000));
+    }
+  });
+
   var buffer = [];
   var lastUpload = 0;
   var lastEmit = 0;
@@ -143,7 +149,7 @@
             return '*'.repeat(Math.min(String(value).length, 32));
           }
         : undefined,
-      maskTextSelector: privacy ? '[data-dvr-sensitive], [autocomplete="cc-number"], [autocomplete="one-time-code"]' : undefined,
+      maskTextSelector: privacy ? '[data-dvr-sensitive], [data-dvr-private], [autocomplete="cc-number"], [autocomplete="one-time-code"], .dvr-sensitive, .dvr-mask' : undefined,
       blockSelector: '[data-dvr-block]',
       maskTextClass: 'dvr-mask',
       recordCanvas: false,
@@ -306,7 +312,7 @@
     lastUpload = now;
 
     // Give the recorder a beat to capture the post-error frame.
-    setTimeout(uploadSlice, 500);
+    setTimeout(uploadSlice, 180);
   }
 
   function uploadSlice() {
@@ -324,7 +330,6 @@
           'X-DVR-Ingest': cfg.ingestKey,
         },
         body: JSON.stringify({ slice: events, timestamp: Date.now() }),
-        keepalive: true,
         credentials: 'omit',
         cache: 'no-store',
       })

@@ -3,69 +3,304 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Error-DVR · Controlled crash</title>
+  <title>Lumina Tech Store · Live Web Browsing & Error-DVR Simulation</title>
+  <meta name="description" content="Simulated e-commerce store with rolling Error-DVR session capture and privacy masking.">
   <link rel="stylesheet" href="/app.css">
   <link rel="stylesheet" href="/demo.css">
 </head>
-<body class="demo">
+<body class="demo-body">
 
-  <header class="demo-top">
-    <a class="brand" href="/" aria-label="Back to dashboard">
-      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
-      <span>Error<em>DVR</em></span>
-    </a>
-    <a class="btn sm" href="/">Dashboard</a>
-  </header>
-
-  <main class="demo-main">
-    <p class="eyebrow">Recorder test</p>
-    <h1>Catch a crash<br>on purpose.</h1>
-    <p class="lede">
-      This page loads the recording SDK. Pressing the button throws a real
-      <code>TypeError</code>; the SDK keeps the last 15 seconds in memory and uploads
-      the slice the moment the error fires.
-    </p>
-
-    <section class="demo-card" aria-label="Recorder">
-      <div class="demo-status">
-        <span class="live-dot" id="recDot" aria-hidden="true"></span>
-        <strong id="recLabel">Arming recorder…</strong>
-        <span class="pill-ok" id="maskPill" hidden>Masking on</span>
+  <!-- TOP APP/DVR FLOATING HUD -->
+  <aside class="dvr-hud" aria-label="Error-DVR Status Control">
+    <div class="hud-left">
+      <span class="live-dot" id="recDot" aria-hidden="true"></span>
+      <div class="hud-meta">
+        <strong id="recLabel">Recorder armed</strong>
+        <span class="hud-sub">Silent rolling memory buffer</span>
       </div>
+      <span class="pill-ok" id="maskPill">🛡️ Zero-Knowledge Privacy ON</span>
+    </div>
 
-      <div class="demo-stats">
-        <div class="demo-stat">
-          <span class="label">Buffered</span>
-          <span class="value mono" id="bufferCount">0</span>
-          <span class="unit">events</span>
-        </div>
-        <div class="demo-stat">
-          <span class="label">Window</span>
-          <span class="value mono">15</span>
-          <span class="unit">sec</span>
-        </div>
-        <div class="demo-stat">
-          <span class="label">Uploads</span>
-          <span class="value mono" id="uploadCount">0</span>
-          <span class="unit">slices</span>
-        </div>
+    <div class="hud-center">
+      <span class="hud-label">Buffer Window:</span>
+      <div class="buffer-selector" role="group" aria-label="Buffer window selector">
+        <button type="button" class="buf-btn" data-sec="5">5s</button>
+        <button type="button" class="buf-btn" data-sec="10">10s</button>
+        <button type="button" class="buf-btn active" data-sec="15">15s</button>
       </div>
+      <span class="hud-stat-pill mono"><span id="bufferCount">0</span> events</span>
+      <span class="hud-stat-pill mono"><span id="uploadCount">0</span> uploads</span>
+    </div>
 
-      <button class="btn primary wide crash" type="button" id="crashBtn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <div class="hud-right">
+      <button class="btn danger sm crash-trigger" type="button" id="crashBtn" title="Simulate an immediate fatal TypeError">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12z"></path>
         </svg>
         <span>Run controlled crash</span>
       </button>
+      <a class="btn sm secondary" href="/">Admin Dashboard</a>
+    </div>
+  </aside>
 
-      <p class="demo-hint" id="demoHint">The recorder buffers silently until something breaks.</p>
-    </section>
+  <p class="sr-only" id="demoHint">The recorder buffers silently until something breaks.</p>
 
-    <div id="out" aria-live="polite"></div>
-  </main>
+  <!-- SIMULATED BROWSER WORKSPACE -->
+  <div class="browser-viewport">
+    <!-- Browser Navigation Chrome -->
+    <header class="browser-chrome" aria-label="Simulated Browser Window">
+      <div class="window-dots">
+        <span class="wdot close"></span>
+        <span class="wdot min"></span>
+        <span class="wdot zoom"></span>
+      </div>
+      <div class="browser-nav-btns">
+        <button type="button" class="nav-arrow" aria-label="Back">‹</button>
+        <button type="button" class="nav-arrow" aria-label="Forward">›</button>
+        <button type="button" class="nav-arrow" id="reloadBtn" aria-label="Reload">⟳</button>
+      </div>
+      <div class="browser-url-bar">
+        <svg class="lock-icon" width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+        </svg>
+        <span class="url-text" id="browserUrl">https://lumina-store.internal/shop/checkout</span>
+      </div>
+      <div class="browser-user-badge">
+        <span class="user-avatar">SJ</span>
+        <span class="user-name">Sarah Jenkins (Customer)</span>
+      </div>
+    </header>
+
+    <!-- SIMULATED WEB APPLICATION: LUMINA LUXURY STORE -->
+    <main class="store-app" id="storeApp">
+      <!-- Store Header -->
+      <nav class="store-nav">
+        <div class="store-brand">
+          <span class="brand-glyph">✦</span>
+          <strong>LUMINA</strong>
+          <span class="brand-tag">Lifestyle & Audio</span>
+        </div>
+        <div class="store-links">
+          <a href="#catalog" class="active">Audio & Gear</a>
+          <a href="#wearables">Wearables</a>
+          <a href="#reviews">Reviews</a>
+          <a href="#support">Support</a>
+        </div>
+        <div class="store-cart-pill" id="cartBadgeBtn">
+          <span>🛒 Cart</span>
+          <span class="cart-count-badge" id="cartCountBadge">2</span>
+        </div>
+      </nav>
+
+      <!-- Store Main Grid -->
+      <div class="store-grid">
+        <!-- Products Column -->
+        <section class="products-section">
+          <div class="section-title-row">
+            <div>
+              <p class="section-eyebrow">Featured Collection</p>
+              <h2>High-Fidelity Acoustics</h2>
+            </div>
+            <span class="badge-neutral">Fast 2-Day Shipping</span>
+          </div>
+
+          <div class="products-grid">
+            <!-- Product 1 -->
+            <article class="product-card featured">
+              <div class="prod-badge">Editor's Choice</div>
+              <div class="prod-image-ph headset">
+                <span class="prod-symbol">🎧</span>
+              </div>
+              <div class="prod-info">
+                <h3>SoundWave Pro ANC</h3>
+                <p class="prod-desc">Active noise-cancelling wireless headphones with 42hr battery and studio spatial audio.</p>
+                <div class="prod-bottom">
+                  <span class="prod-price">$299.00</span>
+                  <button type="button" class="btn primary sm add-to-cart-btn" data-name="SoundWave Pro ANC" data-price="299">Add to Cart</button>
+                </div>
+              </div>
+            </article>
+
+            <!-- Product 2 -->
+            <article class="product-card">
+              <div class="prod-image-ph ring">
+                <span class="prod-symbol">💍</span>
+              </div>
+              <div class="prod-info">
+                <h3>Nebula Smart Ring V3</h3>
+                <p class="prod-desc">Titanium sleep & biometric tracker with 7-day battery life and water resistance.</p>
+                <div class="prod-bottom">
+                  <span class="prod-price">$199.00</span>
+                  <button type="button" class="btn secondary sm add-to-cart-btn" data-name="Nebula Smart Ring V3" data-price="199">Add to Cart</button>
+                </div>
+              </div>
+            </article>
+
+            <!-- Product 3 -->
+            <article class="product-card">
+              <div class="prod-image-ph mouse">
+                <span class="prod-symbol">🖱️</span>
+              </div>
+              <div class="prod-info">
+                <h3>AeroGlide Carbon Mouse</h3>
+                <p class="prod-desc">Ultra-lightweight 49g wireless gaming & productivity mouse with optical switches.</p>
+                <div class="prod-bottom">
+                  <span class="prod-price">$89.00</span>
+                  <button type="button" class="btn secondary sm add-to-cart-btn" data-name="AeroGlide Carbon Mouse" data-price="89">Add to Cart</button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- Checkout / Cart Column -->
+        <aside class="checkout-panel">
+          <div class="checkout-header">
+            <h3>Express Checkout</h3>
+            <span class="badge-secure">🔒 256-Bit SSL</span>
+          </div>
+
+          <!-- Cart items list -->
+          <div class="cart-items" id="cartItemsList">
+            <div class="cart-item">
+              <span class="ci-emoji">🎧</span>
+              <div class="ci-details">
+                <strong class="ci-title">SoundWave Pro ANC</strong>
+                <span class="ci-sub">Matte Midnight Black · Qty 1</span>
+              </div>
+              <span class="ci-price">$299.00</span>
+            </div>
+            <div class="cart-item">
+              <span class="ci-emoji">💍</span>
+              <div class="ci-details">
+                <strong class="ci-title">Nebula Smart Ring V3</strong>
+                <span class="ci-sub">Stealth Grey (Size 10) · Qty 1</span>
+              </div>
+              <span class="ci-price">$199.00</span>
+            </div>
+          </div>
+
+          <!-- Privacy Protected Customer Form -->
+          <form class="checkout-form" id="checkoutForm" autocomplete="off">
+            <div class="form-privacy-note">
+              <span class="lock-glyph">🛡️</span>
+              <span><strong>Privacy Shield Protected:</strong> Form inputs are redacted in DVR session logs to protect your privacy.</span>
+            </div>
+
+            <div class="field-row">
+              <div class="field-group">
+                <label for="custName">Customer Name</label>
+                <input id="custName" type="text" class="dvr-mask" data-dvr-sensitive="true" value="Sarah Jenkins" placeholder="Full name">
+              </div>
+              <div class="field-group">
+                <label for="custEmail">Email Address</label>
+                <input id="custEmail" type="email" class="dvr-mask" data-dvr-sensitive="true" value="sarah.jenkins@example.com" placeholder="Email">
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label for="custAddr">Delivery Address</label>
+              <input id="custAddr" type="text" class="dvr-mask" data-dvr-sensitive="true" value="742 Evergreen Terrace, Suite 402" placeholder="Street address">
+            </div>
+
+            <div class="field-row">
+              <div class="field-group card-group">
+                <label for="custCard">Payment Card</label>
+                <div class="card-input-wrap">
+                  <input id="custCard" type="text" class="dvr-mask" data-dvr-sensitive="true" autocomplete="cc-number" value="4532 8812 9043 4242" placeholder="Card number">
+                  <span class="card-brand">VISA</span>
+                </div>
+              </div>
+              <div class="field-group exp-group">
+                <label for="custExp">Expires / CVV</label>
+                <input id="custExp" type="text" class="dvr-mask" data-dvr-sensitive="true" value="08/29 · ***" placeholder="MM/YY">
+              </div>
+            </div>
+
+            <div class="order-summary-box">
+              <div class="summary-line">
+                <span>Subtotal</span>
+                <span id="subtotalPrice">$498.00</span>
+              </div>
+              <div class="summary-line">
+                <span>Express Courier Shipping</span>
+                <span class="text-green">FREE</span>
+              </div>
+              <div class="summary-line total-line">
+                <strong>Total Due</strong>
+                <strong class="total-val" id="totalPrice">$498.00</strong>
+              </div>
+            </div>
+
+            <!-- Big Interactive Checkout Button -->
+            <button class="btn primary wide checkout-pay-btn" type="submit" id="payOrderBtn">
+              <span>Pay & Place Order ($498.00)</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7"></path>
+              </svg>
+            </button>
+            <p class="checkout-footer-note">Pressing this completes your order or simulates an unexpected transaction pipeline crash.</p>
+          </form>
+        </aside>
+      </div>
+    </main>
+
+    <!-- REALISTIC CRASH & FREEZE OVERLAY (Appears when fatal error fires) -->
+    <div class="crash-freeze-overlay" id="freezeOverlay" hidden>
+      <div class="crash-modal" role="dialog" aria-modal="true" aria-labelledby="crashTitle">
+        <div class="crash-banner">
+          <span class="crash-icon">⚠️</span>
+          <div>
+            <h2 id="crashTitle">Application Error · Page Unresponsive</h2>
+            <p class="crash-lead">A fatal runtime exception occurred while browsing. The session has been frozen.</p>
+          </div>
+        </div>
+
+        <div class="crash-tech-box">
+          <div class="ct-row">
+            <span class="ct-label">Exception:</span>
+            <code class="ct-val err-color">TypeError: Cannot read properties of undefined (reading 'processPayment')</code>
+          </div>
+          <div class="ct-row">
+            <span class="ct-label">Location:</span>
+            <code class="ct-val">https://lumina-store.internal/js/checkout-gateway.js:142:19</code>
+          </div>
+          <div class="ct-row">
+            <span class="ct-label">Network Status:</span>
+            <code class="ct-val status-500">POST /api/checkout/charge — 500 Internal Server Error (48ms)</code>
+          </div>
+          <div class="ct-row">
+            <span class="ct-label">Privacy Shield:</span>
+            <span class="badge-privacy-ok">🔒 Customer Data Redacted (Zero PII Leaked to DVR)</span>
+          </div>
+        </div>
+
+        <div class="dvr-capture-card">
+          <div class="dvr-cap-head">
+            <span class="live-pulse"></span>
+            <strong>Error-DVR Rolling Buffer Preserved</strong>
+            <span class="cap-pill" id="capturedBufferPill">15s Pre-Crash Buffer</span>
+          </div>
+          <p class="dvr-cap-desc">
+            The DVR has recorded the moments leading up to this crash with customer inputs masked.
+            As an administrator, you can open the replay to inspect network requests, console logs, and visual interactions.
+          </p>
+
+          <!-- Captured trace details populated by demo.js for tests (#out .result) -->
+          <div id="out" aria-live="polite"></div>
+        </div>
+
+        <div class="crash-modal-actions">
+          <button type="button" class="btn secondary" id="resetDemoBtn">Reset & Browse Again</button>
+          <a href="/" class="btn secondary">Admin Dashboard</a>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <!-- SCRIPTS -->
   <script src="/vendor/rrweb.js"></script>
   <script src="/config.js"></script>
   <script src="/sdk.js"></script>

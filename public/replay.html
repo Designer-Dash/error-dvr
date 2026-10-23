@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Error-DVR · Replay</title>
+  <title>Error-DVR · Session Replay & Admin Diagnostics</title>
+  <meta name="description" content="Visual DVR session replay with customer privacy masking, buffer scrub, and developer telemetry.">
   <link rel="stylesheet" href="/app.css">
   <link rel="stylesheet" href="/replay.css">
   <link rel="stylesheet" href="/vendor/rrweb-player.css">
@@ -30,6 +31,14 @@
       </p>
     </div>
 
+    <!-- ZERO-KNOWLEDGE PRIVACY SHIELD TOGGLE -->
+    <div class="privacy-shield-badge" id="privacyShieldBadge">
+      <button class="btn sm privacy-toggle active" id="privacyToggleBtn" type="button" title="Toggle User Privacy Shield (Zero-Knowledge View)">
+        <span class="shield-icon">🛡️</span>
+        <span id="privacyToggleText">Privacy Shield: ON (Content Masked)</span>
+      </button>
+    </div>
+
     <button class="btn sm" type="button" id="shareBtn">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"></path><path d="M12 3v12"></path><path d="m7 8 5-5 5 5"></path>
@@ -46,15 +55,32 @@
 
     <section class="stage-card" aria-label="Session replay">
       <div class="stage-head">
-        <h2>Session replay</h2>
-        <span class="chip-soft" id="stageMeta">isolated origin</span>
+        <div>
+          <h2>Session Replay</h2>
+          <span class="privacy-note-text" id="privacyNoticeText">Zero-Knowledge Mode: Customer text & inputs are masked</span>
+        </div>
+        <div class="stage-meta-group">
+          <!-- QUICK BUFFER TIME JUMP BUTTONS (15s, 10s, 5s pre-error) -->
+          <div class="buffer-jump-bar" role="group" aria-label="Buffer window scrub">
+            <span class="jump-label">Buffer Jump:</span>
+            <button type="button" class="btn-jump" id="jump15s" data-jump-sec="15" title="Jump to start of 15s pre-crash buffer">-15s Buffer</button>
+            <button type="button" class="btn-jump" id="jump10s" data-jump-sec="10" title="Jump to 10s before crash">-10s</button>
+            <button type="button" class="btn-jump" id="jump5s" data-jump-sec="5" title="Jump to 5s before crash">-5s Pre-Crash</button>
+            <button type="button" class="btn-jump crash-jump" id="jumpCrash" data-jump-sec="0" title="Jump directly to error moment">💥 Crash</button>
+          </div>
+          <span class="chip-soft" id="stageMeta">isolated origin</span>
+        </div>
       </div>
 
-      <div class="stage-body">
-        <!-- Served from the other loopback hostname: a real cross-origin document.
-             allow-same-origin is required so rrweb can reach its own nested replay
-             frame; isolation comes from the origin boundary, not from opacity. -->
+      <div class="stage-body privacy-shield-active" id="stageBody">
+        <!-- Sandboxed iframe player surface -->
         <iframe id="playerFrame" sandbox="allow-scripts allow-same-origin" title="Sandboxed session replay" referrerpolicy="no-referrer"></iframe>
+        
+        <!-- Privacy Shield Glass Indicator -->
+        <div class="privacy-watermark" id="privacyWatermark" aria-hidden="true">
+          <span>🔒 User Privacy Shield Active · Content Redacted</span>
+        </div>
+
         <div class="stage-cover" id="cover">
           <div class="cover-inner">
             <span class="spinner" aria-hidden="true"></span>
@@ -91,6 +117,7 @@
       </div>
     </section>
 
+    <!-- ADMIN DEVELOPER TELEMETRY INSPECTOR -->
     <aside class="inspect" aria-label="Trace details">
 
       <section class="ins-card">
@@ -108,6 +135,9 @@
           <button class="tab" type="button" role="tab" data-tab="console" aria-selected="false" id="tab-console" aria-controls="consoleLog">
             Console <span class="tab-n" id="conCount">0</span>
           </button>
+          <button class="tab" type="button" role="tab" data-tab="urls" aria-selected="false" id="tab-urls" aria-controls="urlsLog">
+            URL Flow <span class="tab-n" id="urlCount">0</span>
+          </button>
           <button class="tab" type="button" role="tab" data-tab="events" aria-selected="false" id="tab-events" aria-controls="eventsLog">
             Events <span class="tab-n" id="evCount">0</span>
           </button>
@@ -122,6 +152,7 @@
 
         <div class="tab-body" id="networkLog" role="tabpanel" aria-labelledby="tab-network"></div>
         <div class="tab-body" id="consoleLog" role="tabpanel" aria-labelledby="tab-console" hidden></div>
+        <div class="tab-body" id="urlsLog" role="tabpanel" aria-labelledby="tab-urls" hidden></div>
         <div class="tab-body" id="eventsLog" role="tabpanel" aria-labelledby="tab-events" hidden></div>
       </section>
 
