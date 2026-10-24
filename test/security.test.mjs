@@ -275,9 +275,11 @@ const cfgJs = await req('GET', '/config.js');
 check('config carries the ingest key, not the admin token', cfgJs.text.includes('ingestKey') && !cfgJs.text.includes('adminToken'));
 check('config.js is not cached', (cfgJs.headers.get('cache-control') || '').includes('no-store'));
 
-for (const asset of ['/player.js', '/vendor/rrweb.js', '/vendor/rrweb-player.js', '/vendor/rrweb-player.css']) {
+// Anything a *third-party* page loads must be fetchable cross-origin, or the
+// browser blocks it outright (this happened with /sdk.js and CORP: same-origin).
+for (const asset of ['/sdk.js', '/player.js', '/vendor/rrweb.js', '/vendor/rrweb-player.js', '/vendor/rrweb-player.css']) {
   const r = await req('GET', asset);
-  check(`CORP permits opaque-origin frame: ${asset}`, (r.headers.get('cross-origin-resource-policy') || '') === 'cross-origin', r.headers.get('cross-origin-resource-policy') || 'missing');
+  check(`CORP permits cross-origin embedding: ${asset}`, (r.headers.get('cross-origin-resource-policy') || '') === 'cross-origin', r.headers.get('cross-origin-resource-policy') || 'missing');
 }
 
 const replayHtml = (await req('GET', replayPath)).text;

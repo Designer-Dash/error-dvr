@@ -1,21 +1,45 @@
 {
   "name": "error-dvr",
-  "version": "2.0.0",
-  "description": "Hardened local-only error DVR: records a short DOM/network/console slice on error",
-  "private": true,
-  "main": "src/server.js",
+  "version": "1.0.0",
+  "description": "Local-only error DVR: record, replay and diagnose the moment a web app crashes.",
+  "keywords": [
+    "error",
+    "debugging",
+    "session-replay",
+    "rrweb",
+    "observability",
+    "devtools",
+    "local-first"
+  ],
+  "license": "MIT",
+  "author": "Error-DVR contributors",
   "type": "commonjs",
+  "main": "src/server.js",
+  "bin": {
+    "error-dvr": "bin/error-dvr.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "public",
+    "vendor",
+    "README.md",
+    "SECURITY.md",
+    "LICENSE",
+    "shots/dashboard.png",
+    "shots/replay.png"
+  ],
   "engines": {
     "node": ">=22.5.0"
   },
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node src/server.js",
+    "start": "node bin/error-dvr.js",
+    "dev": "node bin/error-dvr.js",
     "test": "node test/security.test.mjs",
-    "test:e2e": "node test/e2e-replay.test.mjs"
+    "test:e2e": "node test/e2e-replay.test.mjs",
+    "test:cli": "node test/cli.test.mjs",
+    "test:detect": "node test/detect.test.mjs"
   },
-  "author": "Hackathon Team",
-  "license": "MIT",
   "dependencies": {
     "express": "^4.21.2"
   }

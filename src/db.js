@@ -14,8 +14,8 @@ function sha256(text) {
   return crypto.createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
-function openDatabase(config) {
-  const dbPath = path.resolve(__dirname, '..', config.databasePath);
+function openDatabase({ databasePath, maxSlices = 2000 }) {
+  const dbPath = path.resolve(databasePath);
   const dataDir = path.dirname(dbPath);
   fs.mkdirSync(dataDir, { recursive: true, mode: 0o700 });
 

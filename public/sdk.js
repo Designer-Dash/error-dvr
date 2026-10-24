@@ -11,10 +11,18 @@
   var cfg = window.__DVR__ || {};
   var privacy = cfg.privacyMasking !== false;
 
-  // Only ever upload to our own origin.
-  var uploadUrl = new URL(cfg.uploadUrl || '/upload', window.location.href).href;
-  if (new URL(uploadUrl).origin !== window.location.origin) {
-    console.warn('[dvr] refusing to record: upload URL is cross-origin');
+  // The SDK is dropped into *your* site, so the upload URL is usually
+  // cross-origin. That is fine: /upload is write-only, requires the ingest key,
+  // and no read endpoint sends CORS headers.
+  var uploadUrl;
+  try {
+    uploadUrl = new URL(cfg.uploadUrl || '/upload', window.location.href).href;
+  } catch (e) {
+    console.warn('[dvr] invalid upload URL; recording disabled');
+    return;
+  }
+  if (!/^https?:$/.test(new URL(uploadUrl).protocol)) {
+    console.warn('[dvr] refusing to record: upload URL must be http(s)');
     return;
   }
   if (!cfg.ingestKey) {
@@ -25,12 +33,6 @@
   var MAX_EVENTS = cfg.maxEvents || 5000;
   var WINDOW_MS = (cfg.sliceLengthSec || 15) * 1000;
   var UPLOAD_COOLDOWN_MS = 10000;
-
-  window.addEventListener('dvr:set-window', function (e) {
-    if (e && e.detail && typeof e.detail.seconds === 'number') {
-      WINDOW_MS = Math.max(3000, Math.min(60000, e.detail.seconds * 1000));
-    }
-  });
 
   var buffer = [];
   var lastUpload = 0;
@@ -127,13 +129,7 @@
     return null;
   }
 
-  function startRecording() {
-    const record = resolveRecord();
-    if (!record) {
-      console.warn('[dvr] rrweb unavailable; DOM recording disabled');
-      return;
-    }
-
+  function begin(record) {
     // rrweb's own masking primitives run inside the recorder, so plaintext
     // inputs are never serialised in the first place.
     record({
@@ -149,7 +145,7 @@
             return '*'.repeat(Math.min(String(value).length, 32));
           }
         : undefined,
-      maskTextSelector: privacy ? '[data-dvr-sensitive], [data-dvr-private], [autocomplete="cc-number"], [autocomplete="one-time-code"], .dvr-sensitive, .dvr-mask' : undefined,
+      maskTextSelector: privacy ? '[data-dvr-sensitive], [autocomplete="cc-number"], [autocomplete="one-time-code"]' : undefined,
       blockSelector: '[data-dvr-block]',
       maskTextClass: 'dvr-mask',
       recordCanvas: false,
@@ -158,6 +154,50 @@
       // (or tracking pixels) from third-party origins.
       inlineStylesheet: true,
       sampling: { mousemove: 50, scroll: 100, media: 800, input: 'last' },
+    });
+  }
+
+  /**
+   * The host page may not include rrweb. Pull it from the DVR origin — the same
+   * origin we upload to — so a one-line snippet still produces a replayable
+   * trace instead of a DOM-less one.
+   */
+  function loadRuntime(onReady) {
+    var src;
+    try {
+      src = new URL('/vendor/rrweb.js', uploadUrl).href;
+    } catch (e) {
+      src = null;
+    }
+    if (!src) {
+      onReady(null);
+      return;
+    }
+
+    var script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.onload = function () {
+      onReady(resolveRecord());
+    };
+    script.onerror = function () {
+      onReady(null);
+    };
+    (document.head || document.documentElement).appendChild(script);
+  }
+
+  function startRecording() {
+    const record = resolveRecord();
+    if (record) {
+      begin(record);
+      return;
+    }
+    loadRuntime(function (loaded) {
+      if (!loaded) {
+        console.warn('[dvr] rrweb unavailable; DOM recording disabled');
+        return;
+      }
+      begin(loaded);
     });
   }
 
@@ -312,7 +352,7 @@
     lastUpload = now;
 
     // Give the recorder a beat to capture the post-error frame.
-    setTimeout(uploadSlice, 180);
+    setTimeout(uploadSlice, 500);
   }
 
   function uploadSlice() {
@@ -330,6 +370,9 @@
           'X-DVR-Ingest': cfg.ingestKey,
         },
         body: JSON.stringify({ slice: events, timestamp: Date.now() }),
+        // No `keepalive`: Chrome caps keepalive bodies at 64 KB, and a snapshot
+        // with inlined styles easily exceeds that, silently dropping the upload.
+        // Slices are uploaded while the page is alive, so it buys us nothing.
         credentials: 'omit',
         cache: 'no-store',
       })

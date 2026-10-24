@@ -248,51 +248,81 @@
     <!-- REALISTIC CRASH & FREEZE OVERLAY (Appears when fatal error fires) -->
     <div class="crash-freeze-overlay" id="freezeOverlay" hidden>
       <div class="crash-modal" role="dialog" aria-modal="true" aria-labelledby="crashTitle">
-        <div class="crash-banner">
-          <span class="crash-icon">⚠️</span>
-          <div>
-            <h2 id="crashTitle">Application Error · Page Unresponsive</h2>
-            <p class="crash-lead">A fatal runtime exception occurred while browsing. The session has been frozen.</p>
+        <!-- ================= 1. USER VIEW: CLEAN PAYMENT FAILED NOTICE ================= -->
+        <div class="payment-declined-card">
+          <div class="pd-header">
+            <div class="pd-icon-circle">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              </svg>
+            </div>
+            <div class="pd-title-group">
+              <div class="pd-badge-row">
+                <span class="badge-declined">Payment Failed</span>
+                <span class="pd-ref">Ref: #TXN-84920</span>
+              </div>
+              <h2 id="crashTitle">Unable to Process Payment</h2>
+              <p class="crash-lead">
+                Your payment of <strong id="declinedTotalDisplay">$498.00</strong> could not be completed with the payment card provided.
+                Your card has <strong>not</strong> been charged.
+              </p>
+            </div>
+          </div>
+
+          <div class="pd-user-hint">
+            <span class="pd-hint-icon">💡</span>
+            <span>Please verify your card details, or try an alternative payment method to complete your order.</span>
+          </div>
+
+          <div class="pd-user-actions">
+            <button type="button" class="btn primary" id="resetDemoBtn">Try Payment Again</button>
+            <button type="button" class="btn secondary" id="btnToggleAdminView">
+              <span>View Engineer Diagnostic Trace</span>
+              <span class="admin-chip">Admin</span>
+            </button>
           </div>
         </div>
 
-        <div class="crash-tech-box">
-          <div class="ct-row">
-            <span class="ct-label">Exception:</span>
-            <code class="ct-val err-color">TypeError: Cannot read properties of undefined (reading 'processPayment')</code>
-          </div>
-          <div class="ct-row">
-            <span class="ct-label">Location:</span>
-            <code class="ct-val">https://lumina-store.internal/js/checkout-gateway.js:142:19</code>
-          </div>
-          <div class="ct-row">
-            <span class="ct-label">Network Status:</span>
-            <code class="ct-val status-500">POST /api/checkout/charge — 500 Internal Server Error (48ms)</code>
-          </div>
-          <div class="ct-row">
-            <span class="ct-label">Privacy Shield:</span>
-            <span class="badge-privacy-ok">🔒 Customer Data Redacted (Zero PII Leaked to DVR)</span>
-          </div>
-        </div>
-
-        <div class="dvr-capture-card">
+        <!-- ================= 2. ADMIN VIEW: ERROR-DVR TELEMETRY & ROOT CAUSE ================= -->
+        <div class="dvr-capture-card" id="adminTelemetrySection">
           <div class="dvr-cap-head">
             <span class="live-pulse"></span>
-            <strong>Error-DVR Rolling Buffer Preserved</strong>
+            <strong>Error-DVR Engineering Diagnostics</strong>
+            <span class="admin-telemetry-badge">Admin & SRE View</span>
             <span class="cap-pill" id="capturedBufferPill">15s Pre-Crash Buffer</span>
           </div>
           <p class="dvr-cap-desc">
-            The DVR has recorded the moments leading up to this crash with customer inputs masked.
-            As an administrator, you can open the replay to inspect network requests, console logs, and visual interactions.
+            The customer above sees only the standard payment decline notice. Behind the scenes, Error-DVR intercepted the unhandled transaction exception and preserved the rolling 15-second lead-up.
           </p>
+
+          <!-- Root cause details shown to engineers & judges -->
+          <div class="crash-tech-box">
+            <div class="ct-row">
+              <span class="ct-label">Root Cause:</span>
+              <code class="ct-val err-color">TypeError: Cannot read properties of undefined (reading 'processPayment')</code>
+            </div>
+            <div class="ct-row">
+              <span class="ct-label">Exception File:</span>
+              <code class="ct-val">https://lumina-store.internal/js/checkout-gateway.js:142:19</code>
+            </div>
+            <div class="ct-row">
+              <span class="ct-label">API Gateway:</span>
+              <code class="ct-val status-500">POST /api/checkout/charge — 500 Internal Server Error (48ms)</code>
+            </div>
+            <div class="ct-row">
+              <span class="ct-label">Privacy Shield:</span>
+              <span class="badge-privacy-ok">🔒 Customer Details Masked (Zero PII Sent to DVR)</span>
+            </div>
+          </div>
 
           <!-- Captured trace details populated by demo.js for tests (#out .result) -->
           <div id="out" aria-live="polite"></div>
-        </div>
 
-        <div class="crash-modal-actions">
-          <button type="button" class="btn secondary" id="resetDemoBtn">Reset & Browse Again</button>
-          <a href="/" class="btn secondary">Admin Dashboard</a>
+          <div class="admin-quick-links">
+            <a href="/" class="admin-dash-btn" target="_blank">Open Full Admin Dashboard ↗</a>
+          </div>
         </div>
       </div>
     </div>

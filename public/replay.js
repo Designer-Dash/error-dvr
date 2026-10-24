@@ -21,8 +21,6 @@
     playing: false,
     ready: false,
     errorAt: null,
-    urls: [],
-    privacyShield: true,
   };
 
   var els = {};
@@ -298,7 +296,6 @@
 
     renderNetwork(baseTs);
     renderConsole();
-    renderUrls(baseTs);
     renderEvents(baseTs);
   }
 
@@ -366,39 +363,6 @@
     list.forEach(function (event) {
       host.appendChild(eventRow(event, baseTs));
     });
-  }
-
-  function renderUrls(baseTs) {
-    if (!els.urlsLog) return;
-    var host = els.urlsLog;
-    if (state.urls.length === 0) {
-      emptyInto(host, 'No navigation entries', 'No page navigations or distinct URL paths were captured.');
-      return;
-    }
-    var list = filtered(state.urls, function (u) {
-      return [u.url, u.type, u.label].join(' ');
-    });
-    if (list.length === 0) {
-      emptyInto(host, 'Nothing matches', 'No URL matches the current filter.');
-      return;
-    }
-    host.textContent = '';
-    var wrap = el('div', 'url-flow-list');
-    list.forEach(function (item, idx) {
-      var row = el('div', 'url-flow-item');
-      row.appendChild(el('span', 'url-step-badge', 'Step ' + (idx + 1)));
-      var info = el('div', 'url-flow-info');
-      info.appendChild(el('span', 'url-flow-path', item.url));
-      var meta = el('div', 'url-flow-meta');
-      meta.appendChild(el('span', null, item.type || 'Page'));
-      if (item.timestamp && baseTs) {
-        meta.appendChild(el('span', null, '+' + ((item.timestamp - baseTs) / 1000).toFixed(1) + 's'));
-      }
-      info.appendChild(meta);
-      row.appendChild(info);
-      wrap.appendChild(row);
-    });
-    host.appendChild(wrap);
   }
 
   // ------------------------------------------------------------- playback --
@@ -504,9 +468,8 @@
     els.networkLog.hidden = name !== 'network';
     els.consoleLog.hidden = name !== 'console';
     els.eventsLog.hidden = name !== 'events';
-    if (els.urlsLog) els.urlsLog.hidden = name !== 'urls';
 
-    var focusMap = { network: els.networkLog, console: els.consoleLog, events: els.eventsLog, urls: els.urlsLog };
+    var focusMap = { network: els.networkLog, console: els.consoleLog, events: els.eventsLog };
     if (focusMap[name]) focusMap[name].scrollTop = 0;
   }
 
@@ -535,16 +498,6 @@
       netCount: document.getElementById('netCount'),
       conCount: document.getElementById('conCount'),
       evCount: document.getElementById('evCount'),
-      urlsLog: document.getElementById('urlsLog'),
-      urlCount: document.getElementById('urlCount'),
-      stageBody: document.getElementById('stageBody'),
-      privacyToggleBtn: document.getElementById('privacyToggleBtn'),
-      privacyToggleText: document.getElementById('privacyToggleText'),
-      privacyNoticeText: document.getElementById('privacyNoticeText'),
-      jump15s: document.getElementById('jump15s'),
-      jump10s: document.getElementById('jump10s'),
-      jump5s: document.getElementById('jump5s'),
-      jumpCrash: document.getElementById('jumpCrash'),
       networkLog: document.getElementById('networkLog'),
       consoleLog: document.getElementById('consoleLog'),
       eventsLog: document.getElementById('eventsLog'),
@@ -612,52 +565,6 @@
         togglePlay();
       }
     });
-
-    function togglePrivacyShield() {
-      state.privacyShield = !state.privacyShield;
-      if (els.stageBody) {
-        if (state.privacyShield) {
-          els.stageBody.classList.add('privacy-shield-active');
-          if (els.privacyToggleBtn) {
-            els.privacyToggleBtn.classList.remove('disabled');
-            els.privacyToggleBtn.classList.add('active');
-          }
-          if (els.privacyToggleText) els.privacyToggleText.textContent = 'Privacy Shield: ON (Content Masked)';
-          if (els.privacyNoticeText) els.privacyNoticeText.textContent = 'Zero-Knowledge Mode: Customer text & inputs are masked';
-          toast('Zero-Knowledge Privacy Shield enabled — user content masked');
-        } else {
-          els.stageBody.classList.remove('privacy-shield-active');
-          if (els.privacyToggleBtn) {
-            els.privacyToggleBtn.classList.add('disabled');
-            els.privacyToggleBtn.classList.remove('active');
-          }
-          if (els.privacyToggleText) els.privacyToggleText.textContent = 'Privacy Shield: OFF (Raw View)';
-          if (els.privacyNoticeText) els.privacyNoticeText.textContent = 'Raw View: Content unmasked for administrative debug';
-          toast('Privacy Shield disabled — raw DOM visible');
-        }
-      }
-    }
-
-    if (els.privacyToggleBtn) {
-      els.privacyToggleBtn.addEventListener('click', togglePrivacyShield);
-    }
-
-    function jumpBuffer(sec) {
-      if (!state.ready) return;
-      var anchor = state.errorAt !== null && state.errorAt !== undefined ? state.errorAt : state.duration;
-      var target = sec === 0 ? anchor : Math.max(0, anchor - (sec * 1000));
-      seekTo(target);
-      if (sec === 0) {
-        toast('Jumped to moment of crash');
-      } else {
-        toast('Scrubbed to -' + sec + 's buffer before crash');
-      }
-    }
-
-    if (els.jump15s) els.jump15s.addEventListener('click', function () { jumpBuffer(15); });
-    if (els.jump10s) els.jump10s.addEventListener('click', function () { jumpBuffer(10); });
-    if (els.jump5s) els.jump5s.addEventListener('click', function () { jumpBuffer(5); });
-    if (els.jumpCrash) els.jumpCrash.addEventListener('click', function () { jumpBuffer(0); });
   }
 
   function start() {
@@ -770,31 +677,6 @@
     els.netCount.textContent = String(state.network.length);
     els.conCount.textContent = String(state.consoleEvents.length);
     els.evCount.textContent = String(state.events.length);
-
-    state.urls = [];
-    events.forEach(function (e) {
-      if (e.type === 4 && e.data && e.data.href) {
-        state.urls.push({
-          url: e.data.href,
-          type: 'Page Navigation (DOM)',
-          timestamp: e.timestamp,
-        });
-      } else if (e.type === 'network' && e.url) {
-        state.urls.push({
-          url: (e.method || 'GET') + ' ' + e.url + (e.status ? ' [' + e.status + ']' : ''),
-          type: 'API / Network Request',
-          timestamp: e.timestamp,
-        });
-      }
-    });
-    if (summary.href && !state.urls.some(function (u) { return u.url === summary.href; })) {
-      state.urls.unshift({
-        url: summary.href,
-        type: 'Initial Page View',
-        timestamp: events[0] ? events[0].timestamp : null,
-      });
-    }
-    if (els.urlCount) els.urlCount.textContent = String(state.urls.length);
 
     var firstError = state.errors[0];
     els.errLine.textContent = firstError

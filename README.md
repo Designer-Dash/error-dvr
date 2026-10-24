@@ -1,152 +1,191 @@
 # Error‑DVR
 
-A local‑only **error DVR** for web apps. It records a rolling window of DOM
-mutations, network metadata and console output, uploads one slice when an error
-fires, and lets you replay the exact lead‑up — with the failure pinned on a
-timeline.
+**See exactly what happened in the seconds before your app crashed.** Error‑DVR
+records a rolling window of DOM activity, network calls and console output in the
+browser, uploads one trace when an error fires, and lets you replay it — with the
+failure pinned on a timeline.
 
-The interface is a soft‑UI dashboard: pale canvas, raised white surfaces, violet
-for structure, mint for healthy, coral only for real failure.
+Runs on your machine. Nothing leaves it.
+
+```bash
+npx error-dvr
+```
+
+That prints a dashboard URL and an admin token. Paste the token, and you are in.
 
 ![Dashboard](shots/dashboard.png)
 
-> **Read [SECURITY.md](SECURITY.md) before recording anything real.** It documents
-> the threat model, the audit that produced this design, and the residual risks.
+---
+
+## Why
+
+A stack trace tells you *where* it broke. It never tells you what the user did
+next to it: which button they pressed, which request came back 500, what the form
+looked like. Error‑DVR keeps the last 15 seconds in memory and ships that slice
+the moment something throws — so you can watch it back instead of guessing.
 
 ---
 
 ## Quick start
 
 ```bash
-npm install          # one dependency: express
-npm start            # http://127.0.0.1:3000
+npx error-dvr
 ```
 
-Open the dashboard, paste the admin token printed at startup, and you are in.
-
 ```
-  Error-DVR (hardened) listening on http://127.0.0.1:3000
-  Dashboard  : http://127.0.0.1:3000/
-  Demo page  : http://127.0.0.1:3000/demo
-  Admin token: 2gKdtqrqa7oynpivlHh7ojgiBcJ5M0AHSird-MnV3II
+  Error-DVR  v1.0.0
+  record · replay · diagnose the moment before the crash
+
+  ● listening on http://127.0.0.1:3000
+
+  dashboard  http://127.0.0.1:3000
+  demo       http://127.0.0.1:3000/demo
+  data       /your/project/data
+
+  admin token
+  2gKdtqrqa7oynpivlHh7ojgiBcJ5M0AHSird-MnV3II
+  paste it into the dashboard to unlock it
 ```
 
-Requires **Node.js ≥ 22.5** for the built‑in `node:sqlite` module. No native build tools.
+1. Open the dashboard and paste the token.
+2. Open `/demo` and hit **Run controlled crash** to see a trace appear.
+3. Add the snippet below to *your* site to start capturing real ones.
+
+Requires **Node.js 22.5+** (it uses the built‑in `node:sqlite`). One dependency: Express.
 
 ---
 
-## The three screens
+## What it captures
+
+The demo page throws on purpose so you can see the whole loop in one click. Real
+pages are detected the same way — the SDK listens for the failures an app
+actually dies from:
+
+| Signal | Recorded | Uploads a trace on its own |
+|---|---|---|
+| Uncaught exception (`throw`, `null.x`, etc.) | yes | **yes** |
+| Unhandled promise rejection | yes | **yes** |
+| `console.error` / `console.warn` | yes | no — included in the next trace |
+| Failed request (4xx / 5xx) | yes | no — included in the next trace |
+| A healthy page | — | no trace at all |
+
+So a route that renders fine produces nothing; a route that blows up produces a
+trace with the click that led to it, the request that returned 500, and the DOM
+as it looked.
+
+---
+
+## Instrument your own site
+
+```bash
+npx error-dvr snippet
+```
+
+prints a snippet to paste before `</body>`:
+
+```html
+<script>
+  window.__DVR__ = {
+    uploadUrl: "http://127.0.0.1:3000/upload",
+    ingestKey: "…",          // write-only
+    sliceLengthSec: 15,
+    privacyMasking: true
+  };
+</script>
+<script src="http://127.0.0.1:3000/vendor/rrweb.js"></script>
+<script src="http://127.0.0.1:3000/sdk.js"></script>
+```
+
+It works from any origin — including localhost:5173, a LAN dev box, or a staging
+domain — because `/upload` is CORS‑enabled for writes only. If you skip the rrweb
+line, the SDK fetches it from the DVR itself. Mark sensitive elements with
+`data-dvr-sensitive` (masked) or `data-dvr-block` (excluded).
+
+---
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `error-dvr` | start the recorder and dashboard |
+| `error-dvr token` | print the admin token and ingest key |
+| `error-dvr snippet` | print the instrumentation snippet (uses the last port you started) |
+| `error-dvr rotate` | generate a fresh key pair |
+| `error-dvr demo` | print the demo page URL |
+| `error-dvr --port 4000` | run on a different port |
+| `error-dvr --data-dir ./traces` | choose where recordings live |
+| `error-dvr --open` | open the dashboard automatically |
+| `error-dvr --quiet` | never print the token (CI, screen sharing) |
+
+If the port is busy, Error‑DVR walks to the next free one and tells you.
+
+---
+
+## The screens
 
 | Route | What it is |
 |---|---|
-| `/` | Dashboard — greeting, failure count, 24‑hour histogram, recent traces, attention list, detail drawer |
-| `/demo` | Instrumented page — throws a real `TypeError` so you can watch a trace appear |
-| `/replay/:id` | Trace review — replay canvas, timeline with the error pin, error summary, network/console/events tabs |
-
-### Dashboard
-
-The rail switches between **Dashboard**, **Recordings** (filterable archive with
-severity counts), **Issues** (grouped by message) and **Settings** (security
-posture). Clicking any trace opens a drawer first; **Open replay** is the primary
-action.
-
-### Replay
-
-The left pane is the sandboxed replay with inset playback controls and a timeline;
-the red marker sits at the exact moment of first failure. The right pane answers
-"what happened": the error, its file and line, a short factual bullet list
-(last click, first error, last request), and one clearly‑labelled inference. The
-tabbed inspector shows **Network**, **Console** and **Events**, each filterable.
+| `/` | Dashboard — failure count, 24‑hour histogram, recent traces, attention list |
+| `/demo` | Instrumented page that crashes on purpose |
+| `/replay/:id` | Replay canvas, timeline with the error pin, error summary, network/console/events tabs |
 
 ![Replay](shots/replay.png)
 
----
-
-## Two credentials, deliberately
-
-| Credential | Who holds it | Can do |
-|---|---|---|
-| **ingest key** | the instrumented page (via `/config.js`) | create slices — nothing else |
-| **admin token** | you, the operator | read slices |
-
-The instrumented page is the component most likely to be compromised, so it holds
-a write‑only key and can never read another user's recording.
-
-The admin token lives in **`sessionStorage` for that tab only** — never
-`localStorage`, never a cookie, never a URL. Share links carry no token; a
-recipient unlocks their own tab. A `#token=` fragment is accepted for one‑off
-links and stripped from the address bar immediately.
-
-### Replay is isolated by origin
-
-Recorded DOM is attacker‑influenced data. It is sanitised server‑side before
-storage, then rendered in an iframe served from **the other loopback hostname**
-(`localhost` if you are on `127.0.0.1`, and vice versa). That is a real origin
-boundary: the player cannot read the dashboard's DOM or its token, and its CSP
-sets `connect-src 'none'` so it cannot exfiltrate.
-
-### Masking actually works
-
-Inputs are masked by rrweb before serialisation; emails, card numbers and long
-tokens are redacted from console output and URLs. Mark extra elements with
-`data-dvr-sensitive` (mask text) or `data-dvr-block` (exclude entirely).
+The replay pane answers "what happened" with facts, not guesses: the last click,
+the first error and its offset, the last request — plus one clearly labelled
+inference.
 
 ---
 
-## Tests
+## Privacy
 
-```bash
-npm test             # 85 black-box security checks against a running server
-npm run test:e2e     # 38 headless-Chrome checks: dashboard, replay, recorder
-```
+Inputs are masked by rrweb *before* serialisation. Emails, card numbers and long
+tokens are redacted from console output and URLs. Recordings never leave the
+machine, and replay runs in an iframe served from a second loopback origin, so
+captured DOM cannot reach the dashboard or its token.
 
-Start the server first; both read `data/.secrets.json` for credentials. Pass a base
-URL as the first argument to point them at another port:
-
-```bash
-node test/security.test.mjs http://127.0.0.1:3100
-```
-
-The E2E suite asserts the player is a separate origin, that it cannot read the
-parent or hold the token, that rrweb **actually rebuilt the recorded DOM**, that
-the error pin is placed, and that the recorder produces an accepted upload. It
-reports `SKIP` when no headless browser can start.
-
-`node test/shots-live.mjs` records a fresh session and writes screenshots to
-`shots/` — handy for visual review.
+Details, threat model and the full audit: **[SECURITY.md](SECURITY.md)**.
 
 ---
 
 ## Configuration
 
-`src/config.json`:
+Defaults live in `src/config.json`; the CLI flags above override the common ones.
 
 | Key | Default | Meaning |
 |---|---|---|
-| `host` | `127.0.0.1` | bind address — loopback only |
-| `port` | `3000` | override with `DVR_PORT` to run alongside another instance |
-| `allowedHosts` | loopback names | `Host` header allow‑list (DNS‑rebinding defence) |
-| `maxUploadBytes` | `1048576` | request body cap |
-| `maxEventsPerSlice` | `5000` | events per slice |
-| `maxSlices` | `2000` | retention; oldest are pruned |
-| `maxListLimit` | `100` | maximum rows the dashboard may request |
+| `port` | `3000` | listen port (auto-increments if busy) |
+| `maxSlices` | `2000` | retention before the oldest are pruned |
+| `maxUploadBytes` | `1048576` | per‑trace payload cap |
+| `sliceLengthSec` | `15` | rolling window length |
 | `uploadRateLimitPerMin` | `30` | per IP |
-| `readRateLimitPerMin` | `240` | per IP |
 | `privacyMasking` | `true` | **never disable for real sessions** |
-| `sliceLengthSec` | `15` | rolling window |
 
-If you change `host` or `port`, the `ORIGINS` list in `src/server.js` must match,
-or the Host check and the player CSP will reject you. That is intentional.
-
-Set `DVR_QUIET=1` to stop the admin token being printed at startup.
+Data lives in `./data` in the directory you run from — delete it for a clean
+slate (a new token is generated on next start).
 
 ---
 
-## Intentional limitations
+## Development
 
-- HTTP only, loopback only. Do not bind to a real interface without TLS in front.
-- The SQLite file is unencrypted; use full‑disk encryption on shared machines.
-- External images are blocked during replay (`img-src` limits) so a recorded
-  tracker pixel cannot beacon. Image‑heavy replays will look plain.
-- The ingest key is public by design; an attacker can add junk slices, bounded by
-  retention and rate limits. They cannot read anything.
+```bash
+npm test          # 86 security checks (needs a running server)
+npm run test:e2e  # 38 headless-Chrome checks
+npm run test:cli  # 31 CLI + CORS checks
+npm run test:detect  # 13 checks that real failures are caught on a foreign page
+```
+
+Start the server first for the first two; `test:cli` manages its own instance.
+`node test/shots-live.mjs` records a real session and refreshes `shots/`.
+
+---
+
+## Limitations
+
+- Loopback only, by design. The replay isolation depends on a second loopback
+  origin; put a TLS proxy in front if you need remote access.
+- External images are blocked during replay, so recorded tracker pixels cannot
+  beacon — image‑heavy replays look plain.
+- The ingest key is public by design: it can create traces, never read them.
+
+MIT licensed.

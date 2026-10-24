@@ -890,3 +890,142 @@ body.demo-body {
   border-top: 1px solid #f1f5f9;
   padding-top: 14px;
 }
+
+/* ========================================= PAYMENT DECLINED (USER VIEW) */
+
+.payment-declined-card {
+  background: #ffffff;
+  border: 1px solid #fee2e2;
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.06);
+}
+
+.pd-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.pd-icon-circle {
+  width: 44px;
+  height: 44px;
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pd-title-group {
+  flex: 1;
+}
+
+.pd-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.badge-declined {
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.pd-ref {
+  font-size: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #94a3b8;
+}
+
+.pd-title-group h2 {
+  margin: 0 0 6px;
+  font-size: 1.25rem;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+  font-weight: 700;
+}
+
+.pd-user-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.pd-hint-icon {
+  font-size: 1.1rem;
+}
+
+.pd-user-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-chip {
+  background: #e0e7ff;
+  color: #4338ca;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  text-transform: uppercase;
+}
+
+.admin-telemetry-badge {
+  background: #f3e8ff;
+  color: #7e22ce;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.admin-quick-links {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.admin-dash-btn {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6366f1;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-dash-btn:hover {
+  text-decoration: underline;
+  color: #4f46e5;
+}
+
+.highlight-pulse {
+  outline: 2px solid #8b5cf6;
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.25);
+  transition: all 0.3s ease;
+}
+

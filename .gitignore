@@ -25,3 +25,5 @@ Thumbs.db
 _original_backup/
 claude-upload/
 shots/
+# Package archives
+*.tgz

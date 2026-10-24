@@ -154,6 +154,8 @@ Architectural changes worth calling out:
 - **Token in the URL fragment.** `/replay/<id>#token=…` — fragments are never sent to the server, so the token stays out of request lines, proxy logs and `Referer`. The page strips it from the address bar via `history.replaceState` and sends it as a header. It is never placed in `localStorage` or a cookie.
 - **Isolated replay.** The player is a sandboxed iframe served from the other loopback hostname, with its own explicit-origin CSP, `connect-src 'none'`, `img-src` restricted (so a recorded `<img>` cannot beacon to a third party during replay), and `form-action 'none'`. The replay host can never read the dashboard's `sessionStorage`, where the admin token lives.
 - **Token handling.** The dashboard asks for the admin token once and keeps it in `sessionStorage` for that tab only — never `localStorage`, never a cookie, never a URL. Share links carry no token; a recipient unlocks their own tab. The replay page accepts a `#token=` fragment for one-off links and strips it from the address bar immediately.
+- **Write-only CORS.** The SDK is meant to be pasted into *someone else's* site, so its upload is cross-origin and `/upload` answers preflights for any origin. That is deliberately asymmetric: `/upload` is the only endpoint with CORS headers, it still requires the ingest key, and it can only *create* traces. No read endpoint ever emits `Access-Control-Allow-Origin`, so a hostile page can write junk (rate-limited) but cannot read a single recording. A test asserts both halves of that boundary.
+- **Loopback enforced.** `--host` refuses anything that is not `127.0.0.1`, `localhost` or `::1`. The replay isolation depends on having a second loopback origin; silently allowing a LAN bind would quietly remove it.
 - **Evidence integrity.** Each slice is stored with a SHA‑256 of its payload and re‑verified on read; the reply carries `integrity: "ok" | "mismatch"` and the UI warns loudly on mismatch.
 - **Recorder hardening.** Hard cap of 5000 events, single‑flight uploads with a 10 s cooldown, self‑recording suppressed (the SDK's own upload isn't captured), and same‑origin enforcement on the upload URL.
 
@@ -224,6 +226,22 @@ Worth recording, because each would have shipped silently:
 4. **rrweb 2.1 builds a nested sandbox before its wrapper is in the document,** throwing `createSandboxedIframe() requires root to be connected`. Resolved by mounting `rrweb.Replayer` directly with `UNSAFE_replayCanvas`, which is safe here because the player document is already isolated by origin.
 5. **An opaque-origin player cannot render.** With `sandbox="allow-scripts"` (no `allow-same-origin`) the frame's origin is opaque, and rrweb's *nested* replay frame then gets a fresh opaque origin that rrweb cannot reach — the canvas stayed blank while every other check passed. Fixed by isolating the player with a separate loopback origin instead of opacity, and the E2E test now asserts replayed text.
 6. **The replay canvas overflowed the stage.** rrweb renders at the recorded viewport size (1440px), so the content was clipped. The player now scales and centres the canvas to fit, and re-fits on resize.
+7. **`keepalive: true` silently dropped real traces.** Chrome caps the total in-flight keepalive body at 64 KB. Once the redesigned stylesheet was inlined into the snapshot, every upload exceeded it and the request died after being sent — no response, no error, nothing. The recorder now uses a plain `fetch`; it uploads while the page is alive, so keepalive bought nothing.
+8. **`Cross-Origin-Resource-Policy` blocked the SDK on every third-party page.** `/sdk.js` inherited the global `same-origin` CORP header, so when the snippet was pasted into any other origin the browser refused to load the script — the recorder never ran and nothing was captured. Only the tool's own demo page worked, which is why it looked fine. `/sdk.js` now sends `corp: cross-origin`, and the security suite asserts cross-origin embeddability for every asset a foreign page loads.
+
+### `npm run test:cli` — 31 checks, all passing
+
+Exercises the shipped binary the way a user would: `--version`, `--help`, unknown-command handling, server startup and banner, dashboard/demo/SDK routes, the `token`/`snippet`/`rotate` commands (including that the snippet never contains the admin token), and the CORS boundary — preflight allowed, cross-origin upload accepted with the key, rejected without it, and **no CORS headers on any read endpoint, even when authorised**.
+
+### `npm run test:detect` — 13 checks, all passing
+
+The honesty test: it serves fixture pages from a **separate origin** (exactly how the snippet is used on a real site) and checks what actually gets captured.
+
+- a real `TypeError` from ordinary page code, with no demo button — captured, severity critical, stack pointing at the fixture file
+- an unhandled promise rejection — captured with its message
+- a **healthy** page — no trace created at all (no false positives)
+- the resulting slice contains DOM events and a full snapshot, i.e. it is replayable, even though the fixture loads only `sdk.js` (the SDK fetches rrweb itself)
+- the browser's network log confirms preflight `204` then `200`
 
 ### Residual risk
 

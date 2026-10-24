@@ -24,6 +24,7 @@
 
   var uploads = 0;
   var armed = false;
+  var pending = false;
   var currentBufferSec = 15;
   var cartTotal = 498;
   var cartItemsCount = 2;
@@ -117,6 +118,8 @@
       if (span) span.textContent = 'Capturing trace…';
     }
     if (hint) hint.textContent = 'The error is firing now — the SDK is uploading the window.';
+    var declinedDisplay = document.getElementById('declinedTotalDisplay');
+    if (declinedDisplay) declinedDisplay.textContent = '$' + cartTotal + '.00';
     if (freezeOverlay) freezeOverlay.hidden = false;
     if (recLabel) recLabel.textContent = 'Recorder triggered (uploading slice…)';
 
@@ -137,6 +140,17 @@
         if (s) s.textContent = 'Run controlled crash';
       }
     }, 12000);
+  }
+
+  var btnToggleAdminView = document.getElementById('btnToggleAdminView');
+  if (btnToggleAdminView) {
+    btnToggleAdminView.addEventListener('click', function () {
+      var adminSec = document.getElementById('adminTelemetrySection');
+      if (adminSec) {
+        adminSec.classList.toggle('highlight-pulse');
+        adminSec.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    });
   }
 
   if (crashBtn) {
